@@ -1,6 +1,7 @@
 from utils.pixelcnnpp_utils import *
 import pdb
 from torch.nn.utils import weight_norm as wn
+import torch.nn.functional as F
 from tqdm import tqdm
 from models.interface import ConditionedGenerativeModel
 
@@ -32,6 +33,7 @@ class ConditionalPixelCNNpp(ConditionedGenerativeModel):
 
         loss = self.loss_function(imgs, model_output, nmix=self.n_logistic_mix) / (
                     h * w * bsize * c)  # .view(bsize, -1).mean(dim=1)
+        #likelihood = self.likelihood(imgs, captions_embd)
         outputs = {"loss": loss, "log_likelihood": None,
                    "log_probs": model_output}  # TODO get log_likelihood, check log_probs
         return outputs
@@ -43,6 +45,8 @@ class ConditionalPixelCNNpp(ConditionedGenerativeModel):
         :return: likelihoods : torch.FloatTensor of size bSize, likelihoods of the images conditioned on the captions
         '''
         # TODO implement this
+        x_out = self.pixel_cnn_model(imgs, captions_embd)
+        loss = F.cross_entropy(x_out, imgs)
         return None
 
     def sample(self, captions_embd):
@@ -210,19 +214,21 @@ class nin(nn.Module):
         super(nin, self).__init__()
         self.lin_a = wn(nn.Linear(dim_in, dim_out))
         self.dim_out = dim_out
+        self.conv2 = nn.Conv2d(in_channels=dim_in,out_channels=dim_out,kernel_size=1)
 
     def forward(self, x):
         # TODO replace this by 1x1 conv
-        og_x = x
+        # og_x = x
         # assumes pytorch ordering
         """ a network in network layer (1x1 CONV) """
 
-        x = x.permute(0, 2, 3, 1)
-        shp = [int(y) for y in x.size()]
-        out = self.lin_a(x.contiguous().view(shp[0] * shp[1] * shp[2], shp[3]))
-        shp[-1] = self.dim_out
-        out = out.view(shp)
-        return out.permute(0, 3, 1, 2)
+        #x = x.permute(0, 2, 3, 1)
+        #shp = [int(y) for y in x.size()]
+        #out = self.lin_a(x.contiguous().view(shp[0] * shp[1] * shp[2], shp[3]))
+        #shp[-1] = self.dim_out
+        #out = out.view(shp)
+        #return out.permute(0, 3, 1, 2)
+        return self.conv2(x)
 
 
 class down_shifted_conv2d(nn.Module):
