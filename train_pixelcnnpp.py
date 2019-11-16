@@ -1,7 +1,7 @@
 import argparse
 import os
 from data import CIFAR10Dataset, Imagenet32Dataset
-from models.embedders import BERTEncoder, OneHotClassEmbedding, UnconditionalClassEmbedding
+from models.embedders import BERTEncoder, OneHotClassEmbedding, UnconditionalClassEmbedding, GPT2Encoder
 import torch
 from models.pixelcnnpp import ConditionalPixelCNNpp
 from utils.utils import sample_image, load_model
@@ -32,7 +32,7 @@ parser.add_argument("--model_checkpoint", type=str, default=None,
                     help="load model from checkpoint, model_checkpoint = path_to_your_pixel_cnn_model.pt")
 parser.add_argument("--print_every", type=int, default=10)
 parser.add_argument("--dataset", type=str, default="cifar10", choices=["imagenet32", "cifar10"])
-parser.add_argument("--conditioning", type=str, default="unconditional", choices=["unconditional", "one-hot", "bert"])
+parser.add_argument("--conditioning", type=str, default="unconditional", choices=["unconditional", "one-hot", "bert", "gpt2"])
 
 
 def train(model, embedder, optimizer, scheduler,
@@ -48,7 +48,6 @@ def train(model, embedder, optimizer, scheduler,
 
             with torch.no_grad():
                 condition_embd = embedder(labels, captions)
-
             optimizer.zero_grad()
             outputs = model.forward(imgs, condition_embd)
             loss = outputs['loss'].mean()
@@ -135,9 +134,12 @@ if __name__ == "__main__":
         encoder = UnconditionalClassEmbedding()
     elif opt.conditioning == "bert":
         encoder = BERTEncoder()
-    else:
+    elif opt.conditioning == 'one-hot':
         assert opt.conditioning == "one-hot"
         encoder = OneHotClassEmbedding(train_dataset.n_classes)
+    else:
+        assert opt.conditioning == 'gpt2'
+        encoder = GPT2Encoder()
 
     generative_model = ConditionalPixelCNNpp(embd_size=encoder.embed_size, img_shape=train_dataset.image_shape,
                                              nr_resnet=opt.n_resnet, nr_filters=opt.n_filters,

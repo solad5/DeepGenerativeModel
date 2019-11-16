@@ -3,7 +3,8 @@ import numpy as np
 from mpl_toolkits.axes_grid1 import ImageGrid
 import os
 import torch
-
+import argparse
+import yaml
 
 def sample_image(model, encoder, output_image_dir, n_row, batches_done, dataloader, device):
     """Saves a grid of generated imagenet pictures with captions"""
@@ -46,3 +47,16 @@ def sample_image(model, encoder, output_image_dir, n_row, batches_done, dataload
 def load_model(file_path, generative_model):
     dict = torch.load(file_path)
     generative_model.load_state_dict(dict)
+
+def dict2namespace(config):
+    new_config = argparse.Namespace()
+    for key, value in config.items():
+        if isinstance(value, dict):
+            value = dict2namespace(value)
+        setattr(new_config, key, value)
+    return new_config
+
+def parse_config():
+    with open('utils/gpt2_config.yml', 'r') as f:
+        config = yaml.load(f)
+    return dict2namespace(config)
